@@ -1,0 +1,157 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light Mode - Inspired by modern research tools */
+    --background: 0 0% 99%;
+    --foreground: 0 0% 12%;
+    --card: 0 0% 98%;
+    --card-foreground: 0 0% 12%;
+    --popover: 0 0% 98%;
+    --popover-foreground: 0 0% 12%;
+    --primary: 200 100% 40%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 200 20% 96%;
+    --secondary-foreground: 0 0% 20%;
+    --muted: 200 15% 97%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 200 100% 40%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 200 30% 90%;
+    --input: 200 30% 94%;
+    --ring: 200 100% 40%;
+    --radius: 0.75rem;
+
+    /* Custom Updates Agent colors - Light */
+    --ua-bg-primary: 0 0% 99%;
+    --ua-bg-secondary: 200 20% 97%;
+    --ua-bg-tertiary: 200 15% 95%;
+    --ua-text-primary: 0 0% 12%;
+    --ua-text-secondary: 0 0% 25%;
+    --ua-text-muted: 0 0% 50%;
+    --ua-border: 200 30% 88%;
+    --ua-accent: 200 100% 40%;
+    --ua-accent-hover: 200 100% 35%;
+  }
+
+  .dark {
+    /* Dark Mode - Sophisticated and research-focused */
+    --background: 0 0% 6%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 0 0% 88%;
+    --primary-foreground: 0 0% 12%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 88%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 0 0% 18%;
+    --accent-foreground: 0 0% 96%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 16%;
+    --input: 0 0% 12%;
+    --ring: 0 0% 88%;
+
+    /* Custom Updates Agent colors - Dark */
+    --ua-bg-primary: 0 0% 6%;
+    --ua-bg-secondary: 0 0% 9%;
+    --ua-bg-tertiary: 0 0% 12%;
+    --ua-text-primary: 0 0% 96%;
+    --ua-text-secondary: 0 0% 80%;
+    --ua-text-muted: 0 0% 55%;
+    --ua-border: 0 0% 16%;
+    --ua-accent: 0 0% 88%;
+    --ua-accent-hover: 0 0% 92%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Enhanced animations and micro-interactions */
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 hsl(var(--ua-accent) / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px hsl(var(--ua-accent) / 0);
+  }
+}
+
+.animate-in {
+  animation-fill-mode: both;
+}
+
+.slide-in-from-right {
+  animation: slide-in-from-right 0.3s ease-out;
+}
+
+.fade-in-up {
+  animation: fade-in-up 0.2s ease-out;
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--ua-bg-secondary));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--ua-border));
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--ua-text-muted));
+}
+
+/* Typography enhancements */
+.font-mono {
+  font-feature-settings: "liga" 0;
+}
