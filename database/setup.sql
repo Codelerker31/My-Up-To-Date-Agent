@@ -1,13 +1,19 @@
 -- =====================================================
--- Supabase Database Schema for Updates Agent
+-- Complete Database Setup Script for Updates Agent
 -- =====================================================
 
--- Enable necessary extensions
+-- This script sets up the complete database schema for the Updates Agent application
+-- Run this script in your Supabase SQL Editor to set up the entire database
+
+-- =====================================================
+-- STEP 1: Enable Extensions
+-- =====================================================
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- =====================================================
--- CUSTOM TYPES
+-- STEP 2: Create Custom Types
 -- =====================================================
 
 -- Priority enum for streams
@@ -34,7 +40,7 @@ CREATE TYPE research_status AS ENUM ('active', 'completed', 'failed');
 CREATE TYPE task_type AS ENUM ('research', 'newsletter', 'update');
 
 -- =====================================================
--- TABLES
+-- STEP 3: Create Tables
 -- =====================================================
 
 -- Users table (extends Supabase auth.users)
@@ -132,7 +138,7 @@ CREATE TABLE IF NOT EXISTS public.scheduled_tasks (
 );
 
 -- =====================================================
--- INDEXES
+-- STEP 4: Create Indexes
 -- =====================================================
 
 -- Users indexes
@@ -170,7 +176,7 @@ CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_next_run ON public.scheduled_task
 CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_is_active ON public.scheduled_tasks(is_active);
 
 -- =====================================================
--- TRIGGERS AND FUNCTIONS
+-- STEP 5: Create Functions and Triggers
 -- =====================================================
 
 -- Function to update updated_at timestamp
@@ -240,100 +246,7 @@ CREATE TRIGGER update_stream_last_update_trigger
   FOR EACH ROW EXECUTE FUNCTION update_stream_last_update();
 
 -- =====================================================
--- ROW LEVEL SECURITY (RLS)
--- =====================================================
-
--- Enable RLS on all tables
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.streams ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.newsletters ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.research_sessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.scheduled_tasks ENABLE ROW LEVEL SECURITY;
-
--- Users policies
-CREATE POLICY "Users can view own profile" ON public.users
-  FOR SELECT USING (auth.uid() = id);
-
-CREATE POLICY "Users can update own profile" ON public.users
-  FOR UPDATE USING (auth.uid() = id);
-
-CREATE POLICY "Users can insert own profile" ON public.users
-  FOR INSERT WITH CHECK (auth.uid() = id);
-
--- Streams policies
-CREATE POLICY "Users can view own streams" ON public.streams
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own streams" ON public.streams
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own streams" ON public.streams
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own streams" ON public.streams
-  FOR DELETE USING (auth.uid() = user_id);
-
--- Messages policies
-CREATE POLICY "Users can view messages from own streams" ON public.messages
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.streams 
-      WHERE streams.id = messages.stream_id 
-      AND streams.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Users can insert messages to own streams" ON public.messages
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.streams 
-      WHERE streams.id = messages.stream_id 
-      AND streams.user_id = auth.uid()
-    )
-  );
-
--- Newsletters policies
-CREATE POLICY "Users can view own newsletters" ON public.newsletters
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own newsletters" ON public.newsletters
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own newsletters" ON public.newsletters
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own newsletters" ON public.newsletters
-  FOR DELETE USING (auth.uid() = user_id);
-
--- Research sessions policies
-CREATE POLICY "Users can view own research sessions" ON public.research_sessions
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own research sessions" ON public.research_sessions
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own research sessions" ON public.research_sessions
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own research sessions" ON public.research_sessions
-  FOR DELETE USING (auth.uid() = user_id);
-
--- Scheduled tasks policies
-CREATE POLICY "Users can view own scheduled tasks" ON public.scheduled_tasks
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own scheduled tasks" ON public.scheduled_tasks
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own scheduled tasks" ON public.scheduled_tasks
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own scheduled tasks" ON public.scheduled_tasks
-  FOR DELETE USING (auth.uid() = user_id);
-
--- =====================================================
--- HELPER FUNCTIONS
+-- STEP 6: Create Helper Functions
 -- =====================================================
 
 -- Function to get user's streams with counts
@@ -495,8 +408,185 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Function to calculate next run time for scheduled tasks
+CREATE OR REPLACE FUNCTION calculate_next_run(
+  frequency TEXT,
+  day_of_week TEXT DEFAULT NULL,
+  schedule_time TEXT DEFAULT '09:00'
+)
+RETURNS TIMESTAMPTZ AS $$
+DECLARE
+  next_run TIMESTAMPTZ;
+  time_parts TEXT[];
+  hour INTEGER;
+  minute INTEGER;
+BEGIN
+  -- Parse time string (HH:MM format)
+  time_parts := string_to_array(schedule_time, ':');
+  hour := time_parts[1]::INTEGER;
+  minute := time_parts[2]::INTEGER;
+  
+  -- Calculate next run based on frequency
+  CASE frequency
+    WHEN 'daily' THEN
+      next_run := (CURRENT_DATE + INTERVAL '1 day')::date + (hour || ':' || minute || ':00')::time;
+    WHEN 'weekly' THEN
+      IF day_of_week IS NULL THEN
+        next_run := (CURRENT_DATE + INTERVAL '7 days')::date + (hour || ':' || minute || ':00')::time;
+      ELSE
+        next_run := (CURRENT_DATE + INTERVAL '1 week')::date + (hour || ':' || minute || ':00')::time;
+        -- Adjust to specific day of week if needed
+        WHILE to_char(next_run, 'Day') != day_of_week LOOP
+          next_run := next_run + INTERVAL '1 day';
+        END LOOP;
+      END IF;
+    WHEN 'monthly' THEN
+      next_run := (CURRENT_DATE + INTERVAL '1 month')::date + (hour || ':' || minute || ':00')::time;
+    ELSE
+      -- Default to daily
+      next_run := (CURRENT_DATE + INTERVAL '1 day')::date + (hour || ':' || minute || ':00')::time;
+  END CASE;
+  
+  RETURN next_run;
+END;
+$$ LANGUAGE plpgsql;
+
 -- =====================================================
--- COMMENTS
+-- STEP 7: Enable Row Level Security
+-- =====================================================
+
+-- Enable RLS on all tables
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.streams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.newsletters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.research_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.scheduled_tasks ENABLE ROW LEVEL SECURITY;
+
+-- =====================================================
+-- STEP 8: Create RLS Policies
+-- =====================================================
+
+-- Users policies
+CREATE POLICY "Users can view own profile" ON public.users
+  FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY "Users can update own profile" ON public.users
+  FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Users can insert own profile" ON public.users
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- Streams policies
+CREATE POLICY "Users can view own streams" ON public.streams
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own streams" ON public.streams
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own streams" ON public.streams
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own streams" ON public.streams
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Messages policies
+CREATE POLICY "Users can view messages from own streams" ON public.messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.streams 
+      WHERE streams.id = messages.stream_id 
+      AND streams.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can insert messages to own streams" ON public.messages
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.streams 
+      WHERE streams.id = messages.stream_id 
+      AND streams.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can update messages from own streams" ON public.messages
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM public.streams 
+      WHERE streams.id = messages.stream_id 
+      AND streams.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can delete messages from own streams" ON public.messages
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM public.streams 
+      WHERE streams.id = messages.stream_id 
+      AND streams.user_id = auth.uid()
+    )
+  );
+
+-- Newsletters policies
+CREATE POLICY "Users can view own newsletters" ON public.newsletters
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own newsletters" ON public.newsletters
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own newsletters" ON public.newsletters
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own newsletters" ON public.newsletters
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Research sessions policies
+CREATE POLICY "Users can view own research sessions" ON public.research_sessions
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own research sessions" ON public.research_sessions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own research sessions" ON public.research_sessions
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own research sessions" ON public.research_sessions
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Scheduled tasks policies
+CREATE POLICY "Users can view own scheduled tasks" ON public.scheduled_tasks
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own scheduled tasks" ON public.scheduled_tasks
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own scheduled tasks" ON public.scheduled_tasks
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own scheduled tasks" ON public.scheduled_tasks
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Service role policies (for backend operations)
+CREATE POLICY "Service role can access all data" ON public.users
+  FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can access all streams" ON public.streams
+  FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can access all messages" ON public.messages
+  FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can access all newsletters" ON public.newsletters
+  FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can access all research sessions" ON public.research_sessions
+  FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can access all scheduled tasks" ON public.scheduled_tasks
+  FOR ALL USING (auth.role() = 'service_role');
+
+-- =====================================================
+-- STEP 9: Add Comments
 -- =====================================================
 
 COMMENT ON TABLE public.users IS 'User profiles extending Supabase auth.users';
@@ -510,4 +600,22 @@ COMMENT ON COLUMN public.users.preferences IS 'JSON object containing user prefe
 COMMENT ON COLUMN public.messages.metadata IS 'JSON object containing message metadata like confidence, sources, research phase';
 COMMENT ON COLUMN public.newsletters.sources IS 'JSON array of source URLs and descriptions';
 COMMENT ON COLUMN public.newsletters.key_insights IS 'JSON array of key insights extracted from research';
-COMMENT ON COLUMN public.research_sessions.methodology IS 'JSON array of research methods used in the session'; 
+COMMENT ON COLUMN public.research_sessions.methodology IS 'JSON array of research methods used in the session';
+
+-- =====================================================
+-- SETUP COMPLETE
+-- =====================================================
+
+-- The database is now fully set up with:
+-- ✅ All tables created with proper relationships
+-- ✅ Indexes for optimal performance
+-- ✅ Triggers for automatic updates
+-- ✅ Helper functions for common operations
+-- ✅ Row Level Security enabled
+-- ✅ RLS policies for data protection
+-- ✅ Service role access for backend operations
+
+-- Next steps:
+-- 1. Configure your environment variables
+-- 2. Test the setup with your application
+-- 3. Optionally run the sample data migration for development 

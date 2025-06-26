@@ -9,22 +9,44 @@ import { AuthPage } from "@/components/auth/auth-page"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useStreams } from "@/hooks/use-streams"
 import { Loader2 } from "lucide-react"
+import type { FocusType } from "@/types"
 
 export default function HomePage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const { streams, isLoading: streamsLoading } = useStreams()
   const [activeStreamId, setActiveStreamId] = useState<string>("")
+  const [currentFocus, setCurrentFocus] = useState<FocusType>("research")
   const [showInsights, setShowInsights] = useState(false)
   const [showTimeline, setShowTimeline] = useState(false)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [layoutMode, setLayoutMode] = useState<"chat" | "research" | "overview">("chat")
+  const [newsAlertsCount, setNewsAlertsCount] = useState(0)
 
-  // Set first stream as active when streams load
+  // Set first stream as active when streams load, filtered by current focus
   useEffect(() => {
-    if (streams.length > 0 && !activeStreamId) {
-      setActiveStreamId(streams[0].id)
+    const focusStreams = streams.filter(stream => stream.focusType === currentFocus)
+    if (focusStreams.length > 0 && !activeStreamId) {
+      setActiveStreamId(focusStreams[0].id)
+    } else if (focusStreams.length === 0 && activeStreamId) {
+      // Clear active stream if no streams in current focus
+      setActiveStreamId("")
     }
-  }, [streams, activeStreamId])
+  }, [streams, currentFocus, activeStreamId])
+
+  // Handle focus change
+  const handleFocusChange = (newFocus: FocusType) => {
+    setCurrentFocus(newFocus)
+    
+    // Clear active stream when switching focus
+    setActiveStreamId("")
+    
+    // Reset layout mode to chat when switching focus
+    setLayoutMode("chat")
+    
+    // Hide insights/timeline panels
+    setShowInsights(false)
+    setShowTimeline(false)
+  }
 
   const activeStream = streams.find((stream) => stream.id === activeStreamId)
 
@@ -56,6 +78,14 @@ export default function HomePage() {
           case "3":
             e.preventDefault()
             setLayoutMode("overview")
+            break
+          case "n":
+            e.preventDefault()
+            setCurrentFocus("news")
+            break
+          case "r":
+            e.preventDefault()
+            setCurrentFocus("research")
             break
         }
       }
@@ -91,6 +121,9 @@ export default function HomePage() {
           onStreamSelect={setActiveStreamId}
           layoutMode={layoutMode}
           onLayoutModeChange={setLayoutMode}
+          currentFocus={currentFocus}
+          onFocusChange={handleFocusChange}
+          newsAlertsCount={newsAlertsCount}
         />
 
         <div className="flex-1 flex flex-col min-w-0">
@@ -104,18 +137,28 @@ export default function HomePage() {
 
           {layoutMode === "research" && (
             <div className="p-6">
-              <h2 className="text-2xl font-bold mb-4">Automated Research Timeline</h2>
+              <h2 className="text-2xl font-bold mb-4">
+                {currentFocus === "news" ? "News Timeline" : "Research Timeline"}
+              </h2>
               <p className="text-[hsl(var(--ua-text-secondary))]">
-                View the continuous research and update history for your topics...
+                {currentFocus === "news" 
+                  ? "View real-time news updates and breaking alerts..." 
+                  : "View the continuous research and update history for your topics..."
+                }
               </p>
             </div>
           )}
 
           {layoutMode === "overview" && (
             <div className="p-6">
-              <h2 className="text-2xl font-bold mb-4">Research Overview</h2>
+              <h2 className="text-2xl font-bold mb-4">
+                {currentFocus === "news" ? "News Overview" : "Research Overview"}
+              </h2>
               <p className="text-[hsl(var(--ua-text-secondary))]">
-                Dashboard showing all your automated research streams and schedules...
+                {currentFocus === "news" 
+                  ? "Dashboard showing all your news streams and alert settings..." 
+                  : "Dashboard showing all your automated research streams and schedules..."
+                }
               </p>
             </div>
           )}
@@ -124,7 +167,9 @@ export default function HomePage() {
         {showInsights && (
           <div className="w-80 bg-[hsl(var(--ua-bg-secondary))] border-l border-[hsl(var(--ua-border))] p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Automated Insights</h3>
+              <h3 className="text-lg font-semibold">
+                {currentFocus === "news" ? "Live Updates" : "Research Insights"}
+              </h3>
               <button
                 onClick={() => setShowInsights(false)}
                 className="text-[hsl(var(--ua-text-muted))] hover:text-[hsl(var(--ua-text-primary))]"
@@ -133,7 +178,10 @@ export default function HomePage() {
               </button>
             </div>
             <p className="text-[hsl(var(--ua-text-secondary))]">
-              Continuous monitoring insights and research patterns...
+              {currentFocus === "news" 
+                ? "Real-time news monitoring and breaking alerts..." 
+                : "Continuous monitoring insights and research patterns..."
+              }
             </p>
           </div>
         )}

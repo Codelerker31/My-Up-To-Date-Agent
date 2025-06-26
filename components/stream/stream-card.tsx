@@ -1,19 +1,20 @@
 "use client"
 
 import { useState } from "react"
-import { MoreHorizontal, Clock, AlertCircle } from "lucide-react"
+import { MoreHorizontal, Clock, AlertCircle, Newspaper, BookOpen, TrendingUp, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import type { UpdateStream } from "@/types"
+import type { UpdateStream, FocusType } from "@/types"
 
 interface StreamCardProps {
   stream: UpdateStream
   isActive: boolean
   onClick: () => void
+  focusType?: FocusType
 }
 
-export function StreamCard({ stream, isActive, onClick }: StreamCardProps) {
+export function StreamCard({ stream, isActive, onClick, focusType }: StreamCardProps) {
   const [isHovered, setIsHovered] = useState(false)
 
   const priorityColors = {
@@ -27,6 +28,31 @@ export function StreamCard({ stream, isActive, onClick }: StreamCardProps) {
     blue: "bg-blue-500/10 border-blue-500/20",
     purple: "bg-purple-500/10 border-purple-500/20",
     orange: "bg-orange-500/10 border-orange-500/20",
+  }
+
+  // Focus-specific content
+  const getFocusIcon = () => {
+    if (focusType === "news" || stream.focusType === "news") {
+      return <Newspaper className="w-3 h-3" />
+    }
+    return <BookOpen className="w-3 h-3" />
+  }
+
+  const getFocusIndicator = () => {
+    if (focusType === "news" || stream.focusType === "news") {
+      return (
+        <div className="flex items-center gap-1 text-xs text-[hsl(var(--ua-text-muted))]">
+          <TrendingUp className="w-3 h-3" />
+          <span>Live</span>
+        </div>
+      )
+    }
+    return (
+      <div className="flex items-center gap-1 text-xs text-[hsl(var(--ua-text-muted))]">
+        <Target className="w-3 h-3" />
+        <span>Research</span>
+      </div>
+    )
   }
 
   return (
@@ -51,7 +77,11 @@ export function StreamCard({ stream, isActive, onClick }: StreamCardProps) {
 
       {/* Main Content */}
       <div className="pr-8">
-        <h3 className="font-medium text-[hsl(var(--ua-text-primary))] truncate mb-1">{stream.title}</h3>
+        {/* Title with Focus Icon */}
+        <div className="flex items-center gap-2 mb-1">
+          {getFocusIcon()}
+          <h3 className="font-medium text-[hsl(var(--ua-text-primary))] truncate flex-1">{stream.title}</h3>
+        </div>
 
         <div className="flex items-center gap-2 text-xs text-[hsl(var(--ua-text-muted))] mb-2">
           <Clock className="w-3 h-3" />
@@ -70,12 +100,15 @@ export function StreamCard({ stream, isActive, onClick }: StreamCardProps) {
               {stream.insights} insights
             </Badge>
           </div>
+          {getFocusIndicator()}
         </div>
 
-        {/* Research Progress */}
+        {/* Research/News Progress */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs">
-            <span className="text-[hsl(var(--ua-text-muted))]">Research Progress</span>
+            <span className="text-[hsl(var(--ua-text-muted))]">
+              {focusType === "news" || stream.focusType === "news" ? "Coverage Progress" : "Research Progress"}
+            </span>
             <span className="text-[hsl(var(--ua-text-secondary))]">85%</span>
           </div>
           <Progress value={85} className="h-1" />
