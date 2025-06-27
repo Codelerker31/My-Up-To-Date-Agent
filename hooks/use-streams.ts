@@ -9,7 +9,8 @@ export function useStreams() {
   const [streams, setStreams] = useState<UpdateStream[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { token } = useAuth()
+  const { session } = useAuth()
+  const token = session?.access_token
   const { on, off } = useWebSocket()
 
   // Fetch streams from API

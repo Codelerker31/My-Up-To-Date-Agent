@@ -63,7 +63,11 @@ router.post('/', [
   body('description').optional().trim().isLength({ max: 1000 }),
   body('category').optional().trim().isLength({ max: 50 }),
   body('priority').optional().isIn(['high', 'medium', 'low']),
-  body('color').optional().isIn(['emerald', 'blue', 'purple', 'orange'])
+  body('color').optional().isIn(['emerald', 'blue', 'purple', 'orange']),
+  body('focusType').isIn(['news', 'research']).withMessage('Focus type must be either news or research'),
+  body('frequency').optional().isIn(['daily', 'weekly', 'bi-weekly', 'monthly']),
+  body('dayOfWeek').optional().isIn(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']),
+  body('time').optional().matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Time must be in HH:MM format')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -77,17 +81,34 @@ router.post('/', [
     const databaseService = req.app.get('services').database;
     
     const streamData = {
-      ...req.body,
-      userId: req.user.id
+      title: req.body.title,
+      description: req.body.description,
+      category: req.body.category,
+      priority: req.body.priority || 'medium',
+      color: req.body.color || 'blue',
+      focus_type: req.body.focusType,
+      frequency: req.body.frequency,
+      day_of_week: req.body.dayOfWeek,
+      schedule_time: req.body.time,
+      is_active: req.body.is_active !== false,
+      user_id: req.user.id
     };
     
     const stream = await databaseService.createStream(streamData);
+    
+    // Create focus-specific configuration
+    if (req.body.focusType === 'news' && req.body.newsConfig) {
+      await databaseService.createNewsStreamConfig(stream.id, req.body.newsConfig);
+    } else if (req.body.focusType === 'research' && req.body.researchConfig) {
+      await databaseService.createResearchProjectConfig(stream.id, req.body.researchConfig);
+    }
     
     res.status(201).json({
       message: 'Stream created successfully',
       stream
     });
   } catch (error) {
+    console.error('Error creating stream:', error);
     res.status(500).json({ 
       error: error.message || 'Failed to create stream' 
     });

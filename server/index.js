@@ -163,6 +163,8 @@ io.on('connection', (socket) => {
 
   // Handle stream creation (enhanced for dual focus)
   socket.on('create-stream', async (data) => {
+    logger.info(`Stream creation request from user ${socket.userId}:`, data);
+    
     if (!socket.userId) {
       socket.emit('error', { message: 'Not authenticated' });
       return;
@@ -183,7 +185,28 @@ io.on('connection', (socket) => {
         await supabaseService.createResearchProjectConfig(stream.id, data.researchConfig);
       }
       
-      socket.emit('stream-created', stream);
+      // Transform stream data to match frontend expectations
+      const transformedStream = {
+        id: stream.id,
+        title: stream.title,
+        description: stream.description,
+        category: stream.category,
+        priority: stream.priority,
+        color: stream.color,
+        focusType: stream.focus_type,
+        frequency: stream.frequency,
+        dayOfWeek: stream.day_of_week,
+        time: stream.schedule_time,
+        isActive: stream.is_active,
+        hasNewUpdate: false,
+        lastUpdate: stream.last_update ? new Date(stream.last_update) : null,
+        createdAt: new Date(stream.created_at),
+        sourcesCount: stream.sources_count || 0,
+        insightsCount: stream.insights_count || 0
+      };
+
+      socket.emit('stream-created', transformedStream);
+      logger.info(`Stream created successfully:`, transformedStream);
       
       // Notify chat service to start conversation for new stream
       await chatService.initializeStream(socket.userId, stream.id, socket);
@@ -278,7 +301,8 @@ io.on('connection', (socket) => {
 // Initialize services and start server
 async function startServer() {
   try {
-    // Supabase service is already initialized in constructor
+    // Initialize Supabase service
+    await supabaseService.initialize();
     logger.info('Supabase service initialized');
 
     // Initialize NewsService

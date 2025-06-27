@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { FocusToggle } from "@/components/ui/focus-toggle"
 import { StreamCard } from "@/components/stream/stream-card"
 import { QuickActions } from "@/components/ui/quick-actions"
+import { StreamCreationDialog } from "@/components/stream/stream-creation-dialog"
 import type { UpdateStream, FocusType } from "@/types"
 
 interface StreamSidebarProps {
@@ -20,6 +21,7 @@ interface StreamSidebarProps {
   currentFocus: FocusType
   onFocusChange: (focus: FocusType) => void
   newsAlertsCount?: number
+  onStreamCreated?: (stream: any) => void
 }
 
 export function StreamSidebar({
@@ -31,9 +33,11 @@ export function StreamSidebar({
   currentFocus,
   onFocusChange,
   newsAlertsCount = 0,
+  onStreamCreated,
 }: StreamSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [filterBy, setFilterBy] = useState<"all" | "active" | "priority">("all")
+  const [isCreationDialogOpen, setIsCreationDialogOpen] = useState(false)
 
   // Filter streams by current focus
   const focusFilteredStreams = streams.filter(stream => stream.focusType === currentFocus)
@@ -157,7 +161,10 @@ export function StreamSidebar({
           </div>
         </div>
 
-        <Button className="w-full bg-[hsl(var(--ua-accent))] hover:bg-[hsl(var(--ua-accent-hover))] text-white">
+        <Button 
+          className="w-full bg-[hsl(var(--ua-accent))] hover:bg-[hsl(var(--ua-accent-hover))] text-white"
+          onClick={() => setIsCreationDialogOpen(true)}
+        >
           <focusContent.buttonIcon className="w-4 h-4 mr-2" />
           {focusContent.buttonText}
         </Button>
@@ -210,6 +217,22 @@ export function StreamSidebar({
 
       {/* Quick Actions Footer */}
       <QuickActions currentFocus={currentFocus} />
+
+      {/* Stream Creation Dialog */}
+      <StreamCreationDialog
+        isOpen={isCreationDialogOpen}
+        onClose={() => setIsCreationDialogOpen(false)}
+        focusType={currentFocus}
+        onStreamCreated={(stream) => {
+          if (onStreamCreated) {
+            onStreamCreated(stream)
+          }
+          // Auto-select the newly created stream
+          if (stream?.id) {
+            onStreamSelect(stream.id)
+          }
+        }}
+      />
     </div>
   )
 }

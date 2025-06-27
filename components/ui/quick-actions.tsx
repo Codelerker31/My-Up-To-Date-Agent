@@ -12,17 +12,17 @@ export function QuickActions({ currentFocus }: QuickActionsProps) {
   const getActions = () => {
     if (currentFocus === "news") {
       return [
-        { icon: Bell, label: "Alerts", action: () => {} },
-        { icon: TrendingUp, label: "Trending", action: () => {} },
-        { icon: Archive, label: "Archive", action: () => {} },
-        { icon: Settings, label: "Settings", action: () => {} },
+        { icon: Bell, label: "Alerts", action: () => console.log("Opening news alerts...") },
+        { icon: TrendingUp, label: "Trending", action: () => console.log("Opening trending topics...") },
+        { icon: Archive, label: "Archive", action: () => console.log("Opening archived news...") },
+        { icon: Settings, label: "Settings", action: () => console.log("Opening news settings...") },
       ]
     } else {
       return [
-        { icon: Download, label: "Export", action: () => {} },
-        { icon: Share, label: "Share", action: () => {} },
-        { icon: Archive, label: "Archive", action: () => {} },
-        { icon: Settings, label: "Settings", action: () => {} },
+        { icon: Download, label: "Export", action: () => console.log("Exporting research data...") },
+        { icon: Share, label: "Share", action: () => console.log("Sharing research project...") },
+        { icon: Archive, label: "Archive", action: () => console.log("Opening archived research...") },
+        { icon: Settings, label: "Settings", action: () => console.log("Opening research settings...") },
       ]
     }
   }
